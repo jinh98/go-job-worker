@@ -4,7 +4,11 @@ I) Architecture:
 
 The library will consist of the worker and worker service. At a high level view, a worker will be able
 to perform start, stop, and query status for a command, and the worker service provide a map 
-for the client to have control over multiple workers. The structure will be as follows:
+for the client to have control over multiple workers. The worker service also provides the workers a
+custom logger, which will be used to log output of a process (sdtout and stderr) during execution of a 
+running job to a file or a io.Writer.
+
+The structure will be as follows:
 
 Worker:
 - struct: UID, command, status, error, *logger, mutex
