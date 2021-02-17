@@ -19,27 +19,29 @@ Worker Service:
 - struct: workersmap, *logger, mutex
 - functions: NewWorkerService(), GetWorker(UID), AddWorker(worker)
 
+A sample program will be included to demonstrate the usage of the library.
+
 II) Functions design:
 
-- Error handling will be done approprietly in each function.
-- Locks with sync.mutex will be added where applicable
+- Error handling will be done appropriately in each function.
+- Locks with sync.mutex will be added where applicable.
 
 Worker:
-- NewWorker(): take in a command and a *logger and creates a new worker
-- Start(): Set status of worker as "running", and call Execute(). When Execute() returns finish or 
-error, set status of worker accordingly.
-- Stop(): Set status of a running worker as "killed" and terminates the process
-- Status(): returns the status of a worker (with a lock)
+- NewWorker(): take in a command and a *logger and creates a new worker.
+- Start(): Set status of worker as "running", and call execute(). When execute() finishes or 
+  errors, set status of worker according to the returned exit code.
+- Stop(): Set status of a running worker as "killed" and terminates the process.
+- Status(): returns the status of a worker (with a lock), which will be "pending", "running", "killed",
+  "finished", or "error".
 - execute(): directly execute a command for a process, then pipe both Stdout and Stderr of the process
-to stream process output to logger. When the process finishes or errors, return back to Start()
-- statusUpdate(new status): updates the status of worker (with a lock)
-- ExitStatus(): return the exit code of the worker's command if it ran
+  to stream process output to logger. When the process finishes or errors, the exit code will be returned.
+- statusUpdate(new status): updates the status of worker (with a lock).
 
 Worker Service:
 - NewWorkerService(): creates a empty map of workers and a new logger whose pointer will be used 
-for all workers to log process output to a file
-- AddWorker(worker): inserts a worker into the map (with a lock)
-- GetWorker(UID): returns worker (with a lock)
+  for all workers to log process output to a file.
+- AddWorker(worker): inserts a worker into the map (with a lock).
+- GetWorker(UID): returns worker (with a lock).
 
 III) Tradeoffs and scope:
 If not for simplicity, the following important features should be implemented:
@@ -49,11 +51,11 @@ If not for simplicity, the following important features should be implemented:
 2. Authentication and security are issues that needs to be addressed, which ideally an SSL handshake
     should be required to ensure secure communication b/t client and the server with https.
 3. Clients that access this API would ideally be registered in a database with their credentials, with a
-    client interface that accept authorized requests to protect server against malicious requests
+    client interface that accept authorized requests to protect server against malicious requests.
 4. Logs should be kept consistent and saved to enable referencing and debugging, could use a
     library like Logrus and send log files to a centralized logging platform.
 5. Could use services like Docker to containerize the development environment for dependencies,
-    and packages
+    and packages.
 
 IV) Edge cases consideration:
 
