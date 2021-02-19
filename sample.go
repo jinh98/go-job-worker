@@ -59,7 +59,7 @@ func main() {
 		}
 	}
 
-	// Print output of processes to Os.stdout
+	// log output of worker 1 to os.Stdout
 	log.Println()
 	log.Println("Worker 1 output:")
 	rc, err := w.ReadLogs()
@@ -69,6 +69,7 @@ func main() {
 	io.Copy(os.Stdout, rc)
 	rc.Close()
 
+	// log output of worker 2 to os.Stdout
 	log.Println()
 	log.Println("Worker 2 output:")
 	rc2, err := w2.ReadLogs()
