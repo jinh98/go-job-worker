@@ -12,18 +12,17 @@ import (
 )
 
 // TODO: currently worker status are simply strings, make them constants
-// TODO: implement read output from log file.
+// DONE: implement read output from log file.
 // TODO: outputLogger might not be needed if io.copy is a better option.
 
 // Worker represents a handler for a command
 type Worker struct {
-	ID           string
-	Cmd          *exec.Cmd
-	status       string
-	err          error
-	mu           sync.RWMutex
-	outputLogger *log.Logger
-	outputFile   string
+	ID         string
+	Cmd        *exec.Cmd
+	status     string
+	err        error
+	mu         sync.RWMutex
+	outputFile string
 }
 
 // NewWorker creates a new worker with an unique id and output file
@@ -47,11 +46,10 @@ func NewWorker(command string, args ...string) (*Worker, error) {
 	defer of.Close()
 
 	return &Worker{
-		ID:           uid,
-		Cmd:          exec.Command(command, args...),
-		status:       "pending",
-		outputLogger: log.New(of, "process output:", log.Ldate|log.Ltime),
-		outputFile:   of.Name(),
+		ID:         uid,
+		Cmd:        exec.Command(command, args...),
+		status:     "pending",
+		outputFile: of.Name(),
 	}, nil
 
 }
@@ -164,4 +162,11 @@ func (w *Worker) RemoveLogs() error {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	return os.Remove(w.outputFile)
+}
+
+// ReadLogs returns a read closer of the output log file
+func (w *Worker) ReadLogs() (io.ReadCloser, error) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return os.Open(w.outputFile)
 }

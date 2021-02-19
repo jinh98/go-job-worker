@@ -1,7 +1,9 @@
 package main
 
 import (
+	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/jinh98/go-job-worker/jobworker"
@@ -19,6 +21,11 @@ func main() {
 		log.Fatal(err)
 	}
 	k, err := jobworker.NewWorker("ls")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	w2, err := jobworker.NewWorker("ping", "-c", "4", "8.8.8.8")
 
 	if err != nil {
@@ -49,6 +56,20 @@ func main() {
 
 	// Remove logs if they are no longer needed for checking.
 
-	// w.RemoveLogs()
-	// w2.RemoveLogs()
+	reader, err := w2.ReadLogs()
+	if err != nil {
+		log.Fatal(err)
+	}
+	io.Copy(os.Stdout, reader)
+	reader.Close()
+
+	reader, err = w.ReadLogs()
+	if err != nil {
+		log.Fatal(err)
+	}
+	io.Copy(os.Stdout, reader)
+	reader.Close()
+
+	w.RemoveLogs()
+	w2.RemoveLogs()
 }
