@@ -9,7 +9,7 @@ This project provides a worker library that can start, query, and stop an arbita
 
 ## Requirements
 
-This project runs on a Linux environment and uses go 1.15. There are no external libraries used in this implementation.
+This project runs on a Linux environment and uses go 1.15.
 
   
 
@@ -21,13 +21,13 @@ This project runs on a Linux environment and uses go 1.15. There are no external
 
 ```bash
 
-$ go build
+$ go build -o sample sample.go
 
 ```
 
   
 
-This command will build the project and create an executable`go-job-worker` for the sample program in `main.go` to demonstrate basic uses of the library. 
+This command will build the project and create an executable`sample` for the sample program in `sample.go` to demonstrate basic uses of the library. 
 
   
   
@@ -36,7 +36,7 @@ This command will build the project and create an executable`go-job-worker` for 
 
 ```bash
 
-$ ./go-job-worker
+$ ./sample
 
 ```
 
@@ -54,7 +54,7 @@ Some test cases are provided to demonstrate correctness and functionality of thi
 
 ```bash
 
-go test ./jobworker
+go test ./...
 
 ```
 
