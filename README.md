@@ -15,7 +15,9 @@ This project runs on a Linux environment and uses go 1.15. There are no external
 
 ## Building the API
 
-  
+ `git clone` into this respository and do `cd go-job-worker`
+
+ To build the project, run:
 
 ```bash
 
@@ -46,13 +48,13 @@ This command will run the executable for the sample program.
 ## Running tests
 
   
-Tests are to be implemented
+Some test cases are provided to demonstrate correctness and functionality of this worker library (but not full coverage).
 
   
 
 ```bash
 
-go test ./...
+go test ./jobworker
 
 ```
 

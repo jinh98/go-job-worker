@@ -15,61 +15,67 @@ func init() {
 
 // Sample program showing usage of the jobworker library.
 func main() {
-	// w, err := jobworker.NewWorker("ps -a")
+
+	// Creating a service
 	s, err := jobworker.NewService()
 	if err != nil {
 		log.Fatal(err)
 	}
-	k, err := jobworker.NewWorker("ping", "-c", "2", "8.8.8.8")
+
+	// Creating first worker
+	k, err := jobworker.NewWorker("ls")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Creating second worker
 	w2, err := jobworker.NewWorker("ping", "-c", "4", "8.8.8.8")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Usage of add and get worker
 	s.AddWorker(k)
 	w := s.GetWorker(k.ID)
 
+	// w should finish instantly and w2 completes overtime.
 	go w.Start()
 	go w2.Start()
 
-	// w should finish instantly and w2 completes overtime.
+	// Remove logs if they are no longer needed for checking.
+	defer w.RemoveLogs()
+	defer w2.RemoveLogs()
 
+	// See w2's status change overtime
 	for {
-		status, err := w.Status()
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Print("w status:", status)
+		var status = w2.Status()
+		log.Print("worker2 status:", status)
 		time.Sleep(1 * time.Second)
 
-		if status == "error" || status == "finished" || status == "killed" {
-			log.Print(w.ID, " exited")
+		if status == jobworker.WError || status == jobworker.WFinished || status == jobworker.WKilled {
 			break
 		}
 	}
 
-	// Remove logs if they are no longer needed for checking.
-
-	reader, err := w2.ReadLogs()
+	// Print output of processes to Os.stdout
+	log.Println()
+	log.Println("Worker 1 output:")
+	rc, err := w.ReadLogs()
 	if err != nil {
 		log.Fatal(err)
 	}
-	io.Copy(os.Stdout, reader)
-	reader.Close()
+	io.Copy(os.Stdout, rc)
+	rc.Close()
 
-	reader2, err := w.ReadLogs()
+	log.Println()
+	log.Println("Worker 2 output:")
+	rc2, err := w2.ReadLogs()
 	if err != nil {
 		log.Fatal(err)
 	}
-	io.Copy(os.Stdout, reader2)
-	reader2.Close()
+	io.Copy(os.Stdout, rc2)
+	rc2.Close()
 
-	w.RemoveLogs()
-	w2.RemoveLogs()
 }
