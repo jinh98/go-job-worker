@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	k, err := jobworker.NewWorker("ls")
+	k, err := jobworker.NewWorker("ping", "-c", "2", "8.8.8.8")
 
 	if err != nil {
 		log.Fatal(err)
@@ -41,11 +41,11 @@ func main() {
 	// w should finish instantly and w2 completes overtime.
 
 	for {
-		status, err := w2.Status()
+		status, err := w.Status()
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Print("w2 status:", status)
+		log.Print("w status:", status)
 		time.Sleep(1 * time.Second)
 
 		if status == "error" || status == "finished" || status == "killed" {
@@ -63,12 +63,12 @@ func main() {
 	io.Copy(os.Stdout, reader)
 	reader.Close()
 
-	reader, err = w.ReadLogs()
+	reader2, err := w.ReadLogs()
 	if err != nil {
 		log.Fatal(err)
 	}
-	io.Copy(os.Stdout, reader)
-	reader.Close()
+	io.Copy(os.Stdout, reader2)
+	reader2.Close()
 
 	w.RemoveLogs()
 	w2.RemoveLogs()

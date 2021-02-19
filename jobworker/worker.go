@@ -7,15 +7,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
-// TODO: currently worker status are simply strings, make them constants
-// DONE: implement read output from log file.
-// TODO: outputLogger might not be needed if io.copy is a better option.
-
-// Worker represents a handler for a command
+// Worker represents a handler for a command.
 type Worker struct {
 	ID         string
 	Cmd        *exec.Cmd
@@ -25,30 +22,40 @@ type Worker struct {
 	outputFile string
 }
 
-// NewWorker creates a new worker with an unique id and output file
+// Worker status string constants.
+const (
+	wPending  = "pending"
+	wStarted  = "started"
+	wRunning  = "running"
+	wKilled   = "killed"
+	wFinished = "finished"
+	wError    = "error"
+)
+
+// NewWorker creates a new worker with an unique id and output file.
 func NewWorker(command string, args ...string) (*Worker, error) {
 
-	// TODO: possible UUID generator library like github.com/nu7hatch/gouuid could be used here.
-	// Current implementation utilizes the uuidgen of linux, but have slow performance and not as
-	// reliable.
-	id, err := exec.Command("uuidgen").Output()
-	if err != nil {
-		return nil, err
-	}
-	uid := strings.TrimSuffix(string(id), "\n")
+	// using google/uuid library for uuid generation
+	var uid = uuid.NewString()
 
 	// Hardcoded a /logs directory to store worker output as temp files.
+	// Tempdir giving each worker a dir to log would also work.
 	of, err := ioutil.TempFile("logs", "worker_output_*")
 
 	if err != nil {
 		return nil, err
 	}
-	defer of.Close()
+
+	defer func() {
+		if err := of.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
 
 	return &Worker{
 		ID:         uid,
 		Cmd:        exec.Command(command, args...),
-		status:     "pending",
+		status:     wPending,
 		outputFile: of.Name(),
 	}, nil
 
@@ -57,15 +64,15 @@ func NewWorker(command string, args ...string) (*Worker, error) {
 // Start initiates a worker command and calls execute().
 func (w *Worker) Start() error {
 
-	w.UpdateStatus("started")
+	w.UpdateStatus(wStarted)
 	err := w.execute()
 
 	if err != nil {
 		log.Print("Error: ", err)
-		w.UpdateStatus("error")
+		w.UpdateStatus(wError)
 		return err
 	}
-	w.UpdateStatus("finished")
+	w.UpdateStatus(wFinished)
 
 	return nil
 }
@@ -88,22 +95,32 @@ func (w *Worker) execute() error {
 		return err
 	}
 
-	w.UpdateStatus("running")
+	w.UpdateStatus(wRunning)
 
-	// copy process output to a file
+	// copy combined process output to outputFile.
 	combinedOutput := io.MultiReader(stdout, stderr)
 
 	f, err := os.OpenFile(w.outputFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 
+	// Note: if error occurs when opening/closing/writing to the file, the worker would result in an error
+	// state if error was returned; However the process itself might still be running fine, and logging
+	// the errors instead would let the process proceed.
 	if err != nil {
-		return err
+		log.Print(err)
 	}
-	defer f.Close()
+
+	// Note: same as above.
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
 
 	_, err = io.Copy(f, combinedOutput)
 
+	// Note: same as above.
 	if err != nil {
-		return err
+		log.Print(err)
 	}
 
 	err = cmd.Wait()
@@ -118,23 +135,30 @@ func (w *Worker) execute() error {
 	return nil
 }
 
-// Stop terminates a worker if it is running
+// Stop terminates a worker if it is running.
 func (w *Worker) Stop() error {
 	currentStatus, err := w.Status()
 	if err != nil {
 		return err
 	}
-	if currentStatus != "running" {
+	if currentStatus != wRunning {
 		return errors.New("Error: attempt to kill a process that is not running")
 	}
-	w.UpdateStatus("killed")
-	return w.Cmd.Process.Signal(os.Kill)
+
+	err = w.Cmd.Process.Signal(os.Kill)
+
+	if err != nil {
+		return err
+	}
+
+	w.UpdateStatus(wKilled)
+	return nil
 }
 
-// Status returns the worker's status, which is one of: pending, started, running, killed, error, finished
+// Status returns the worker's status, which is one of: pending, started, running, killed, error, finished.
 func (w *Worker) Status() (string, error) {
 
-	// returns status with a lock
+	// returns status with a lock.
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -142,7 +166,7 @@ func (w *Worker) Status() (string, error) {
 
 }
 
-// UpdateStatus changes the status of the worker with lock
+// UpdateStatus changes the status of the worker with lock.
 func (w *Worker) UpdateStatus(status string) {
 	// update status with lock
 	w.mu.Lock()
@@ -150,21 +174,21 @@ func (w *Worker) UpdateStatus(status string) {
 	w.status = status
 }
 
-// completeStatus returns the exit code of a worker with lock
+// completeStatus returns the exit code of a worker with lock.
 func (w *Worker) completeStatus() int {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	return w.Cmd.ProcessState.ExitCode()
 }
 
-// RemoveLogs cleans up the output log with lock
+// RemoveLogs cleans up the output log with lock.
 func (w *Worker) RemoveLogs() error {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	return os.Remove(w.outputFile)
 }
 
-// ReadLogs returns a read closer of the output log file
+// ReadLogs returns a read closer of the output log file.
 func (w *Worker) ReadLogs() (io.ReadCloser, error) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
